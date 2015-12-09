@@ -1,69 +1,89 @@
-// Lorenz.cxx
-// Runge Kutta 4th order
-// GL, 4.12.2015
-//--------------------
-#include <cmath>
 #include <iostream>
-#include <fstream>
-//--------------------
-void f(double* const y0, const double x);
-void RKstep(double* const yn, const double* const y0, const double x, const double dx);
-//--------------------
-using namespace std;
-//--------------------
+#include <cmath>
 
-int main(void)
-{
-	ofstream out("solution");
-  const int dim = 3;
-	double dx = 0.001,x=0;
-	const double L = 100;
-  double y0[dim] = {1.01, 1.0, 1.0};
-	double yn[dim];
+using namespace std; 
 
-  out << x << "\t" << y0[0] << "\t" << y0[1] << "\t" << y0[2] << endl;
-	while(x<=L)
-	{
-		x += dx;
-		RKstep(yn, y0, x, dx);
-    for(int i=0; i<dim; i++) y0[i] = yn[i];
-		out << x << "\t" << y0[0] << "\t" << y0[1] << "\t" << y0[2] << endl;
-	}
-	out.close();
-	return(0);
+// f(y)
+void f(double *f, const double*  const y){
+  f[0]=y[1];
+  f[1]=-y[0]/sqrt(1+ y[0]*y[0]);
 }
-//-------------------
-void RKstep(double* const yn, const double* const y0,
-            const double x, const double dx)
-{
-	const int dim = 3;
-	double k1[dim], k2[dim], k3[dim], k4[dim];
+   
+ 
 
-  for(int i=0;i<dim; i++) k1[i] = y0[i];
-	f(k1, x);
+int main(){
 
-	for(int i=0;i<dim; i++) k2[i] = y0[i] + 0.5 * dx * k1[i];
-  f(k2, x+0.5*dx);
+const double dt=0.01;
+const double T= 20;
+const int N= T/dt;
 
-	for(int i=0;i<dim; i++) k3[i] = y0[i] + 0.5 * dx * k2[i];
-	f(k3, x+0.5*dx);
+//const double p0=5;
 
-  for(int i=0;i<dim; i++) k4[i] = y0[i] + dx * k3[i];
-	f(k4,  x+dx);
 
-	for(int i=0;i<dim; i++)
-	 yn[i] = y0[i] + 1./6.*dx*(k1[i] + 2*k2[i] + 2*k3[i] + k4[i]);
+
+
+double k1[2];
+double k2[2];
+double k3[2];
+double k4[2];
+double ytemp[2];
+double yn;
+
+
+for(double p0 = 0; p0<5; p0+=0.1){
+  double y[2];
+  y[0] = p0;
+  y[1] = 0;
+  int counter=0; //Zählt Durchgänge
+  
+  for(int i=0;i<N;i++){
+    
+    f(k1,y);  // k1 = f(y_n)
+    
+    ytemp[0] = y[0] + dt/2 * k1[0];
+    ytemp[1] = y[1] + dt/2 * k1[1];
+
+    f(k2,ytemp); // k2 = f( y_n + dt/2 * k1)
+      
+    ytemp[0] = y[0] + dt/2 * k2[0];
+    ytemp[1] = y[1] + dt/2 * k2[1];
+
+    
+    f(k3,ytemp); // k3 = f(y_n + dt/2*k2);
+
+    ytemp[0] = y[0] + dt * k3[0];
+    ytemp[1] = y[1] + dt * k3[1];
+  
+
+    f(k4, ytemp); // k4 = f(y_n + dt * k3)
+    yn=y[0];  
+    y[0] = y[0] + dt/6 * (k1[0]+2*k2[0]+2*k3[0]+k4[0]);
+    y[1] = y[1] + dt/6 * (k1[1]+2*k2[1]+2*k3[1]+k4[1]);
+    
+    
+    if(yn*y[0]<0 && counter ==0){
+      //Püfe auf VZW
+      double ThetaL, ThetaR, ThetaM, I=1.0;
+      ThetaR=1; ThetaL = 0;
+      //Bisection
+      while(I>1e-10){
+	ThetaM = (ThetaR+ThetaR)/2;
+	
+	double b1 = ThetaM  - 3.0/2*ThetaM*ThetaM + 2.0/3*ThetaM*ThetaM*ThetaM;
+	double b2 = ThetaM*ThetaM -2.0/3*ThetaM*ThetaM*ThetaM;
+	double b3 = b2;
+	double b4 = ThetaM*ThetaM/2 +2.0/3*ThetaM*ThetaM*ThetaM;
+	
+	I = yn + dt*(k1[0]*b1+k2[0]*b2+k3[0]*b3+k4[0]*b4);
+	
+	if(I*yn>0)	{ThetaL=ThetaM; yn = I;}
+	if(I*y[0]>0)	{ThetaR=ThetaM; y[0]=I;}
+	}  
+      cout << p0 << "\t" << (i+ThetaM)*4*dt << endl;
+      counter++;
+    }
+   //cout << (i+1)*dt <<"\t"<< y[0]<< "\t" << y[1] <<endl;
+  }
 }
-//-------------------
-// Lorenz model
-void f(double* const y0, const double x)
-{
-	const double a = 10;
-	const double b = 28;
-	const double c = 8.0/3.0;
-	double y[3] = { y0[0], y0[1], y0[2] };
-
-  y0[0] = a*(y[1] - y[0]);
-	y0[1] = y[0]*(b - y[2]) - y[1];
-	y0[2] = y[0]*y[1] - c*y[2];
+ return 0;
 }
